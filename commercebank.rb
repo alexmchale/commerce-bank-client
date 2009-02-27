@@ -44,8 +44,7 @@ class MyCookies
 end
 
 class WebClient
-  attr_reader :fields
-  attr_reader :response
+  attr_reader :fields, :cookies
 
   def initialize
     @cookies = MyCookies.new
@@ -58,16 +57,14 @@ class WebClient
     @response = @http.get(path, @cookies.to_header)
     @cookies.append(@response)
     @fields = (form && get_form(@response.body, form)) || Hash.new
-    self
+    @response
   end
 
   def post(path, form = nil)
-    puts "Posting fields:"
-    pp @fields
     @response = @http.post(path, @fields.to_url, @cookies.to_header)
     @cookies.append(@response)
     @fields = (form && get_form(@response.body, form)) || Hash.new
-    self
+    @response
   end
 
 private
@@ -109,7 +106,7 @@ puts "Login get:"
 pp client.fields
 
 client.fields['txtUserID'] = get_field('username')
-response = client.post('/CBI/login.aspx', 'MAINFORM').response
+response = client.post('/CBI/login.aspx', 'MAINFORM')
 
 # If a question was asked, answer it then get the password page.
 question = response.body.scan(/Your security question:&nbsp;&nbsp;(.*?)<\/td>/i).first.andand.first
@@ -119,7 +116,7 @@ if question
 
   client.fields['txtChallengeAnswer'] = get_field(question)
   client.fields['saveComputer'] = 'rdoBindDeviceNo'
-  response = client.post('/CBI/login.aspx', 'MAINFORM').response
+  response = client.post('/CBI/login.aspx', 'MAINFORM')
 end
 
 puts "Last field:"
@@ -127,8 +124,8 @@ pp client.fields
 
 if client.fields['__EVENTTARGET'] == 'btnLogin'
   client.fields['txtPassword'] = get_field('password')
-  response = client.post('/CBI/login.aspx').response
-  response = client.get('/CBI/Accounts/CBI/Activity.aspx').response
+  response = client.post('/CBI/login.aspx')
+  response = client.get('/CBI/Accounts/CBI/Activity.aspx')
   puts response.body
 else
   puts "Could not reach the password page."
