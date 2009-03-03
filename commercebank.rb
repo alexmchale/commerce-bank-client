@@ -1,5 +1,3 @@
-#!/usr/bin/ruby
-
 require 'rubygems'
 require 'net/http'
 require 'net/https'
@@ -9,6 +7,15 @@ require 'andand'
 require 'cgi'
 require 'yaml'
 require 'ftools'
+require 'time'
+require 'date'
+require 'json'
+
+class Object
+  def to_cents
+    (to_f * 100).to_i
+  end
+end
 
 class Hash
   def to_url
@@ -95,15 +102,13 @@ def get_field(field)
   config[field]
 end
 
+Hpricot.buffer_size = 262144
+
 client = WebClient.new
 
 client.get('/')
-puts "Root get:"
-pp client.fields
 
 client.get('/CBI/login.aspx', 'MAINFORM')
-puts "Login get:"
-pp client.fields
 
 client.fields['txtUserID'] = get_field('username')
 response = client.post('/CBI/login.aspx', 'MAINFORM')
@@ -111,24 +116,36 @@ response = client.post('/CBI/login.aspx', 'MAINFORM')
 # If a question was asked, answer it then get the password page.
 question = response.body.scan(/Your security question:&nbsp;&nbsp;(.*?)<\/td>/i).first.andand.first
 if question
-  puts "Pre-question:"
-  pp client.fields
-
   client.fields['txtChallengeAnswer'] = get_field(question)
   client.fields['saveComputer'] = 'rdoBindDeviceNo'
   response = client.post('/CBI/login.aspx', 'MAINFORM')
 end
 
-puts "Last field:"
-pp client.fields
-
 if client.fields['__EVENTTARGET'] == 'btnLogin'
   client.fields['txtPassword'] = get_field('password')
   response = client.post('/CBI/login.aspx')
-  response = client.get('/CBI/Accounts/CBI/Activity.aspx')
-  puts response.body
+  response = client.get('/CBI/Accounts/CBI/Activity.aspx', 'MAINFORM')
 else
   puts "Could not reach the password page."
   pp client.fields
   puts response.body
+  exit
 end
+
+client.fields['Anthem_UpdatePage'] = 'true'
+client.fields['txtFilterFromDate:textBox'] = Time.parse('1/1/2000').strftime('%m/%d/%Y')
+client.fields['txtFilterToDate:textBox'] = Time.now.strftime('%m/%d/%Y')
+response = client.post('/CBI/Accounts/CBI/Activity.aspx?Anthem_CallBack=true')
+
+raw_data = JSON.parse(response.body)
+register = raw_data['controls']['pnlPosted'].scan(/<a href='(.*?)'>(.*?)<\/a>[\r\n\t]*<\/td><td align=\"Right\">\$?(.*?)<\/td><td align=\"Right\">\$?(.*?)<\/td><td align=\"Right\">\$?(.*?)<\/td>/)
+register.map! {|entry| { :url => entry[0], :debit => entry[1].to_cents, :credit => entry[2].to_cents, :total => entry[3].to_cents}}
+pp register
+
+
+
+
+
+
+
+
