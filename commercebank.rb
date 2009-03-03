@@ -27,54 +27,35 @@ class Hash
   end
 end
 
-class MyCookies
-  attr_reader :fields
-
-  def initialize
-    @fields = Hash.new
-  end
-
-  def append(response)
-    CGI::Cookie.parse(response.header['set-cookie']).each do |key, value|
-      @fields[key] = value.first
-    end
-
-    @fields.delete 'path'
-    @fields.delete 'expires'
-
-    self
-  end
-
-  def to_header
-    { 'Cookie' => @fields.to_cookie }
-  end
-end
-
 class WebClient
   attr_reader :fields, :cookies
 
   def initialize
-    @cookies = MyCookies.new
+    @cookies = Hash.new
     @http = Net::HTTP.new('banking.commercebank.com', 443)
     @http.use_ssl = true
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
 
   def get(path, form = nil)
-    @response = @http.get(path, @cookies.to_header)
-    @cookies.append(@response)
-    @fields = (form && get_form(@response.body, form)) || Hash.new
-    @response
+    response = @http.get(path, header)
+    add_cookies(response)
+    @fields = (form && get_form(response.body, form)) || Hash.new
+    response
   end
 
   def post(path, form = nil)
-    @response = @http.post(path, @fields.to_url, @cookies.to_header)
-    @cookies.append(@response)
-    @fields = (form && get_form(@response.body, form)) || Hash.new
-    @response
+    response = @http.post(path, @fields.to_url, header)
+    add_cookies(response)
+    @fields = (form && get_form(response.body, form)) || Hash.new
+    response
   end
 
 private
+
+  def header
+    { 'Cookie' => @cookies.to_cookie }
+  end
 
   def get_form(body, name)
     doc = Hpricot.parse(body)
@@ -82,6 +63,17 @@ private
     fields = Hash[*((form/"input").map {|e| [ e.attributes['name'], e.attributes['value'] ]}.flatten)]
     fields['TestJavaScript'] = 'OK'
     fields
+  end
+
+  def add_cookies(response)
+    CGI::Cookie.parse(response.header['set-cookie']).each do |key, value|
+      @cookies[key] = value.first
+    end
+
+    @cookies.delete 'path'
+    @cookies.delete 'expires'
+
+    self
   end
 end
 
