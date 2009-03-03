@@ -13,7 +13,7 @@ require 'json'
 
 class Object
   def to_cents
-    (to_f * 100).to_i
+    (to_s.gsub(/[^-.0-9]/, '').to_f * 100).to_i
   end
 end
 
@@ -102,6 +102,28 @@ def get_field(field)
   config[field]
 end
 
+def parse_register(body)
+  doc = Hpricot.parse(body)
+  (doc/"#grdHistory"/"tr").map do |e|
+    next nil unless (e['class'] == 'item' || e['class'] == 'alternatingItem')
+
+    anchor = e.at("a")
+    values = (e/"td").map {|e1| e1.inner_html}
+    debit = values[3].to_cents
+    credit = values[4].to_cents
+    delta = credit - debit
+    total = values[5].to_cents
+
+    { :destination => anchor.inner_html.strip,
+      :url => anchor['href'],
+      :date => Date.parse(values[0]),
+      :delta => delta,
+      :debit => debit,
+      :credit => credit,
+      :total => total }
+  end.compact
+end
+
 Hpricot.buffer_size = 262144
 
 client = WebClient.new
@@ -138,14 +160,6 @@ client.fields['txtFilterToDate:textBox'] = Time.now.strftime('%m/%d/%Y')
 response = client.post('/CBI/Accounts/CBI/Activity.aspx?Anthem_CallBack=true')
 
 raw_data = JSON.parse(response.body)
-register = raw_data['controls']['pnlPosted'].scan(/<a href='(.*?)'>(.*?)<\/a>[\r\n\t]*<\/td><td align=\"Right\">\$?(.*?)<\/td><td align=\"Right\">\$?(.*?)<\/td><td align=\"Right\">\$?(.*?)<\/td>/)
-register.map! {|entry| { :url => entry[0], :debit => entry[1].to_cents, :credit => entry[2].to_cents, :total => entry[3].to_cents}}
+register = parse_register(raw_data['controls']['pnlPosted'])
 pp register
-
-
-
-
-
-
-
 
