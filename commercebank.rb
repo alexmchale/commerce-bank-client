@@ -11,6 +11,8 @@ require 'time'
 require 'date'
 require 'json'
 require 'htmlentities'
+require 'monkey.rb'
+require 'appconfig.rb'
 
 class Array
   def binary
@@ -25,6 +27,10 @@ class Object
 end
 
 class Date
+  def days_in_month
+    (Date.parse("12/31/#{strftime("%Y")}") << (12 - month)).day
+  end
+
   def last_sunday
     d = self
     d -= 1 until d.wday == 0
@@ -93,47 +99,32 @@ private
   end
 end
 
-def get_field(field)
-  path = File.expand_path("~/.commerce.yaml")
-  config = File.exists?(path) ? YAML.load(File.read path) : Hash.new
-
-  unless config[field]
-    print "Please enter the following:\n"
-    print field, ": "
-
-    config[field] = gets.to_s.chomp
-
-    File.open(path, 'w') {|file| file.write(config.to_yaml)}
-    File.chmod(0600, path)
-  end
-
-  config[field]
-end
-
 class CommerceBank
   attr_reader :register
 
   def initialize
+    @config = AppConfig.new('~/.commerce.yaml')
+
     client = WebClient.new
 
     client.get('/')
 
     client.get('/CBI/login.aspx', 'MAINFORM')
 
-    client.fields['txtUserID'] = get_field('username')
+    client.fields['txtUserID'] = @config[:username]
     response = client.post('/CBI/login.aspx', 'MAINFORM')
 
     # If a question was asked, answer it then get the password page.
     question = response.body.scan(/Your security question:&nbsp;&nbsp;(.*?)<\/td>/i).first.andand.first
     if question
-      client.fields['txtChallengeAnswer'] = get_field(question)
+      client.fields['txtChallengeAnswer'] = @config[question]
       client.fields['saveComputer'] = 'rdoBindDeviceNo'
       response = client.post('/CBI/login.aspx', 'MAINFORM')
     end
 
     raise "could not reach the password page" unless client.fields['__EVENTTARGET'] == 'btnLogin'
 
-    client.fields['txtPassword'] = get_field('password')
+    client.fields['txtPassword'] = @config[:password]
     response = client.post('/CBI/login.aspx')
 
     response = client.get('/CBI/Accounts/CBI/Activity.aspx', 'MAINFORM')
@@ -147,7 +138,7 @@ class CommerceBank
     @register = parse_register(raw_data['controls']['pnlPosted'])
   end
 
-  def summary
+  def weekly_summary
     today, yesterday, this_week, last_week = [], [], [], []
 
     register.each do |entry|
@@ -158,23 +149,66 @@ class CommerceBank
       end
     end
 
-    [ summarize('Today', today), 
-      summarize('Yesterday', yesterday),
-      summarize('This Week', this_week),
-      summarize('Last Week', last_week) ].compact.join("\n")
+    summarize('Today' => today, 
+              'Yesterday' => yesterday, 
+              'This Week' => this_week, 
+              'Last Week' => last_week, 
+              :order => [ 'Today', 'Yesterday', 'This Week', 'Last Week' ])
+  end
+
+  def monthly_summary(day_in_month = (Date.today - Date.today.day))
+    first_of_month = day_in_month - day_in_month.day + 1
+    last_of_month = first_of_month + day_in_month.days_in_month - 1
+    entries = register.find_all {|entry| entry[:date] >= first_of_month && entry[:date] <= last_of_month}
+    summarize_html(day_in_month.strftime('%B') => entries)
   end
 
 private
 
-  def summarize(label, entries)
-    return nil if entries.length == 0
+  def summarize(entries)
+    (entries[:order] || entries.keys).map do |label|
+      next if entries[label].length == 0
 
-    text = label.to_s + ":\n"
+      label.to_s + ":\n" + entries[label].map do |e| 
+        delta = "%s%0.2f" % [ (e[:delta] >= 0 ? '+' : '-'), e[:delta].abs/100.0 ] 
+        "%s %-100s %10s %10.2f\n" % [ e[:date].strftime('%02m/%02d/%04Y'), e[:destination], delta, e[:total]/100.0 ]
+      end.join
+    end.compact.join("\n")
+  end
 
-    text + entries.map do |e| 
-      delta = "%s%0.2f" % [ (e[:delta] >= 0 ? '+' : '-'), e[:delta].abs/100.0 ] 
-      "%-100s %10s %10.2f\n" % [ e[:destination], delta, e[:total]/100.0 ]
-    end.join
+  def summarize_html(entries)
+    html = ''
+
+    (entries[:order] || entries.keys).each do |label|
+      next if entries[label].length == 0
+
+      html += '<h2>' + label + '</h2>'
+
+      html += '<table>'
+
+      html += '<tr>'
+      html += '<th>Date</th>'
+      html += '<th>Destination</th>'
+      html += '<th>Amount</th>'
+      html += '<th>Total</th>'
+      html += '</tr>'
+
+      entries[label].each do |e| 
+        delta = "%s%0.2f" % [ (e[:delta] >= 0 ? '+' : '-'), e[:delta].abs/100.0 ] 
+        total = "%0.2f" % (e[:total]/100.0)
+
+        html += '<tr>'
+        html += '<th>' + e[:date].strftime('%02m/%02d/%04Y') + '</th>'
+        html += '<th>' + e[:destination] + '</th>'
+        html += '<th>' + delta + '</th>'
+        html += '<th>' + total + '</th>'
+        html += '</tr>'
+      end
+
+      html += '</table>'
+    end
+
+    html
   end
 
   def parse_register(body)
@@ -202,4 +236,12 @@ private
   end
 end
 
-puts CommerceBank.new.summary
+cb = CommerceBank.new
+
+puts "WEEKLY SUMMARY"
+puts cb.weekly_summary
+
+puts
+
+puts "MONTHLY SUMMARY"
+puts cb.monthly_summary
