@@ -101,7 +101,7 @@ private
 end
 
 class CommerceBank
-  attr_reader :register
+  attr_reader :register, :current, :available
 
   def initialize
     @config = AppConfig.new('~/.commerce.yaml')
@@ -129,6 +129,7 @@ class CommerceBank
     response = client.post('/CBI/login.aspx')
 
     response = client.get('/CBI/Accounts/CBI/Activity.aspx', 'MAINFORM')
+    (@current, @available) = parse_balance(response.body)
 
     client.fields['Anthem_UpdatePage'] = 'true'
     client.fields['txtFilterFromDate:textBox'] = Time.parse('1/1/2000').strftime('%m/%d/%Y')
@@ -234,6 +235,15 @@ private
     html
   end
 
+  def parse_balance(body)
+    Hpricot.buffer_size = 262144
+    doc = Hpricot.parse(body)
+    summaryRows = doc/"table.summaryTable"/"tr"
+    current = (summaryRows[3]/"td")[1].inner_html.to_cents
+    available = (summaryRows[4]/"td")[1].inner_html.to_cents
+    [current, available]
+  end
+
   def parse_register(body)
     Hpricot.buffer_size = 262144
     doc = Hpricot.parse(body)
@@ -259,6 +269,8 @@ private
   end
 end
 
-cb = CommerceBank.new
-cb.gmail_weekly_summary
-cb.gmail_monthly_summary
+if $0 == __FILE__
+  cb = CommerceBank.new
+  cb.gmail_weekly_summary
+  cb.gmail_monthly_summary
+end
