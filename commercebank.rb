@@ -13,6 +13,7 @@ require 'json'
 require 'htmlentities'
 require 'monkey.rb'
 require 'appconfig.rb'
+require 'gmail.rb'
 
 class Array
   def binary
@@ -149,18 +150,40 @@ class CommerceBank
       end
     end
 
-    summarize('Today' => today, 
-              'Yesterday' => yesterday, 
-              'This Week' => this_week, 
-              'Last Week' => last_week, 
-              :order => [ 'Today', 'Yesterday', 'This Week', 'Last Week' ])
+    { 'Today' => today, 
+      'Yesterday' => yesterday, 
+      'This Week' => this_week, 
+      'Last Week' => last_week, 
+      :order => [ 'Today', 'Yesterday', 'This Week', 'Last Week' ] }
   end
 
   def monthly_summary(day_in_month = (Date.today - Date.today.day))
     first_of_month = day_in_month - day_in_month.day + 1
     last_of_month = first_of_month + day_in_month.days_in_month - 1
     entries = register.find_all {|entry| entry[:date] >= first_of_month && entry[:date] <= last_of_month}
-    summarize_html(day_in_month.strftime('%B') => entries)
+    { day_in_month.strftime('%B') => entries }
+  end
+
+  def gmail_weekly_summary
+    last_month = Date.today - Date.today.day
+    subject = "Weekly Summary"
+    summary = summarize_html(weekly_summary)
+
+    username = @config['GMail Username']
+    password = @config['GMail Password']
+
+    GMail.new(username, password).send(username, subject, summary, 'text/html') 
+  end
+
+  def gmail_monthly_summary
+    last_month = Date.today - Date.today.day
+    subject = "#{last_month.strftime('%B')} Summary"
+    summary = summarize_html(monthly_summary(last_month))
+
+    username = @config['GMail Username']
+    password = @config['GMail Password']
+
+    GMail.new(username, password).send(username, subject, summary, 'text/html') 
   end
 
 private
@@ -184,24 +207,24 @@ private
 
       html += '<h2>' + label + '</h2>'
 
-      html += '<table>'
+      html += '<table cellspacing="0" cellpadding="5" style="font-size: 12px" width="100%">'
 
-      html += '<tr>'
-      html += '<th>Date</th>'
-      html += '<th>Destination</th>'
-      html += '<th>Amount</th>'
-      html += '<th>Total</th>'
+      html += '<tr style="font-weight: bold">'
+      html += '<th style="text-align: left">Date</th>'
+      html += '<th style="text-align: left">Destination</th>'
+      html += '<th style="text-align: right">Amount</th>'
+      html += '<th style="text-align: right">Total</th>'
       html += '</tr>'
 
       entries[label].each do |e| 
         delta = "%s%0.2f" % [ (e[:delta] >= 0 ? '+' : '-'), e[:delta].abs/100.0 ] 
         total = "%0.2f" % (e[:total]/100.0)
 
-        html += '<tr>'
-        html += '<th>' + e[:date].strftime('%02m/%02d/%04Y') + '</th>'
-        html += '<th>' + e[:destination] + '</th>'
-        html += '<th>' + delta + '</th>'
-        html += '<th>' + total + '</th>'
+        html += '<tr style="font-weight: normal">'
+        html += '<td style="text-align: left">' + e[:date].strftime('%m/%d/%Y') + '</td>'
+        html += '<td style="text-align: left">' + e[:destination] + '</td>'
+        html += '<td style="text-align: right">' + delta + '</td>'
+        html += '<td style="text-align: right">' + total + '</td>'
         html += '</tr>'
       end
 
@@ -237,11 +260,5 @@ private
 end
 
 cb = CommerceBank.new
-
-puts "WEEKLY SUMMARY"
-puts cb.weekly_summary
-
-puts
-
-puts "MONTHLY SUMMARY"
-puts cb.monthly_summary
+cb.gmail_weekly_summary
+cb.gmail_monthly_summary
