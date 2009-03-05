@@ -130,6 +130,7 @@ class CommerceBank
 
     response = client.get('/CBI/Accounts/CBI/Activity.aspx', 'MAINFORM')
     (@current, @available) = parse_balance(response.body)
+    @pending = parse_pending(response.body)
 
     client.fields['Anthem_UpdatePage'] = 'true'
     client.fields['txtFilterFromDate:textBox'] = Time.parse('1/1/2000').strftime('%m/%d/%Y')
@@ -151,11 +152,12 @@ class CommerceBank
       end
     end
 
-    { 'Today' => today, 
+    { 'Pending' => @pending,
+      'Today' => today, 
       'Yesterday' => yesterday, 
       'This Week' => this_week, 
       'Last Week' => last_week, 
-      :order => [ 'Today', 'Yesterday', 'This Week', 'Last Week' ] }
+      :order => [ 'Pending', 'Today', 'Yesterday', 'This Week', 'Last Week' ] }
   end
 
   def monthly_summary(day_in_month = (Date.today - Date.today.day))
@@ -206,6 +208,8 @@ private
     (entries[:order] || entries.keys).each do |label|
       next if entries[label].length == 0
 
+      use_total = entries[label].find {|e| e[:total]}
+
       html += '<h2>' + label + '</h2>'
 
       html += '<table cellspacing="0" cellpadding="5" style="font-size: 12px" width="100%">'
@@ -214,18 +218,18 @@ private
       html += '<th style="text-align: left">Date</th>'
       html += '<th style="text-align: left">Destination</th>'
       html += '<th style="text-align: right">Amount</th>'
-      html += '<th style="text-align: right">Total</th>'
+      html += '<th style="text-align: right">Total</th>' if use_total
       html += '</tr>'
 
       entries[label].each do |e| 
         delta = "%s%0.2f" % [ (e[:delta] >= 0 ? '+' : '-'), e[:delta].abs/100.0 ] 
-        total = "%0.2f" % (e[:total]/100.0)
+        total = (e[:total] && ("%0.2f" % (e[:total]/100.0))).to_s
 
         html += '<tr style="font-weight: normal">'
         html += '<td style="text-align: left">' + e[:date].strftime('%m/%d/%Y') + '</td>'
         html += '<td style="text-align: left">' + e[:destination] + '</td>'
         html += '<td style="text-align: right">' + delta + '</td>'
-        html += '<td style="text-align: right">' + total + '</td>'
+        html += '<td style="text-align: right">' + total + '</td>' if use_total
         html += '</tr>'
       end
 
@@ -242,6 +246,28 @@ private
     current = (summaryRows[3]/"td")[1].inner_html.to_cents
     available = (summaryRows[4]/"td")[1].inner_html.to_cents
     [current, available]
+  end
+
+  def parse_pending(body)
+    Hpricot.buffer_size = 262144
+    doc = Hpricot.parse(body)
+    coder = HTMLEntities.new
+
+    (doc/"#grdMemoPosted"/"tr").map do |e|
+      next nil unless (e['class'] == 'item' || e['class'] == 'alternatingItem')
+
+      values = (e/"td").map {|e1| coder.decode(e1.inner_html.strip)}
+
+      debit = values[2].to_cents
+      credit = values[3].to_cents
+      delta = credit - debit
+
+      { :date => Date.parse(values[0]),
+        :destination => values[1],
+        :delta => delta,
+        :debit => debit,
+        :credit => credit }
+    end.compact
   end
 
   def parse_register(body)
