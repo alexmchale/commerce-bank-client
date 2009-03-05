@@ -223,7 +223,7 @@ private
 
       entries[label].each do |e| 
         delta = "%s%0.2f" % [ (e[:delta] >= 0 ? '+' : '-'), e[:delta].abs/100.0 ] 
-        total = (e[:total] && ("%0.2f" % (e[:total]/100.0))).to_s
+        total = "%0.2f" % (e[:total].to_i/100.0)
 
         html += '<tr style="font-weight: normal">'
         html += '<td style="text-align: left">' + e[:date].strftime('%m/%d/%Y') + '</td>'
