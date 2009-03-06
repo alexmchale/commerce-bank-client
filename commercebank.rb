@@ -141,7 +141,7 @@ class CommerceBank
     @register = parse_register(raw_data['controls']['pnlPosted'])
   end
 
-  def weekly_summary
+  def daily_summary
     today, yesterday, this_week, last_week = [], [], [], []
 
     register.each do |entry|
@@ -167,10 +167,10 @@ class CommerceBank
     { day_in_month.strftime('%B') => entries }
   end
 
-  def gmail_weekly_summary
+  def gmail_daily_summary
     last_month = Date.today - Date.today.day
-    subject = "Weekly Summary"
-    summary = summarize_html(weekly_summary)
+    subject = "Daily Summary"
+    summary = summarize_html(daily_summary)
 
     username = @config['GMail Username']
     password = @config['GMail Password']
@@ -297,6 +297,6 @@ end
 
 if $0 == __FILE__
   cb = CommerceBank.new
-  cb.gmail_weekly_summary
+  cb.gmail_daily_summary
   cb.gmail_monthly_summary
 end
