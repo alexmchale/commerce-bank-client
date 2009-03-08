@@ -167,8 +167,11 @@ class CommerceBank
     { day_in_month.strftime('%B') => entries }
   end
 
+  def print_daily_summary
+    print(summarize(daily_summary))
+  end
+
   def gmail_daily_summary
-    last_month = Date.today - Date.today.day
     subject = "Daily Summary"
     summary = summarize_html(daily_summary)
 
@@ -195,9 +198,14 @@ private
     (entries[:order] || entries.keys).map do |label|
       next if entries[label].length == 0
 
-      label.to_s + ":\n" + entries[label].map do |e| 
-        delta = "%s%0.2f" % [ (e[:delta] >= 0 ? '+' : '-'), e[:delta].abs/100.0 ] 
-        "%s %-100s %10s %10.2f\n" % [ e[:date].strftime('%02m/%02d/%04Y'), e[:destination], delta, e[:total]/100.0 ]
+      label.to_s + ":\n" + entries[label].map do |e|
+        [
+          e[:date].strftime('%02m/%02d/%04Y '),
+          "%-100s " % e[:destination],
+          "%10s " % e[:delta].to_dollars(:show_plus),
+          e[:total] && ("%10.2f" % (e[:total] / 100.0)),
+          "\n"
+        ].compact.join
       end.join
     end.compact.join("\n")
   end
