@@ -167,6 +167,10 @@ class CommerceBank
     { day_in_month.strftime('%B') => entries }
   end
 
+  def print_all
+    summarize 'All' => register
+  end
+
   def print_daily_summary
     print(summarize(daily_summary))
   end
@@ -283,22 +287,34 @@ private
     doc = Hpricot.parse(body)
     coder = HTMLEntities.new
     (doc/"#grdHistory"/"tr").map do |e|
-      next nil unless (e['class'] == 'item' || e['class'] == 'alternatingItem')
+      next nil unless [ 'item', 'alternatingitem' ].include? e['class'].to_s.downcase
 
       anchor = e.at("a")
       values = (e/"td").map {|e1| e1.inner_html}
+      date = Date.parse(values[0])
+      check = values[1].strip
       debit = values[3].to_cents
       credit = values[4].to_cents
       delta = credit - debit
       total = values[5].to_cents
 
-      { :destination => coder.decode(anchor.inner_html.strip),
+      images = (e/"a").find_all do |e1|
+        e1['target'].to_s.downcase == 'checkimage'
+      end.map do |e1|
+        { :url => e1['href'], :title => e1.inner_html.strip }
+      end
+
+      {
+        :destination => coder.decode(anchor.inner_html.strip),
         :url => anchor['href'],
-        :date => Date.parse(values[0]),
+        :date => date,
+        :check => check,
+        :images => images,
         :delta => delta,
         :debit => debit,
         :credit => credit,
-        :total => total }
+        :total => total
+      }
     end.compact
   end
 end
