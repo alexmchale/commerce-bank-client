@@ -203,7 +203,7 @@ private
           e[:date].strftime('%02m/%02d/%04Y '),
           "%-100s " % e[:destination],
           "%10s " % e[:delta].to_dollars(:show_plus),
-          e[:total] && ("%10.2f" % (e[:total] / 100.0)),
+          e[:total] && ("%10s " % e[:total].to_dollars),
           "\n"
         ].compact.join
       end.join
