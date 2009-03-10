@@ -222,22 +222,30 @@ private
 
       use_total = entries[label].find {|e| e[:total]}
 
-      html += '<h2>' + label + '</h2>'
+      html += '<h2 style="font-family: garamond, georgia, serif">' + label + '</h2>'
 
-      html += '<table cellspacing="0" cellpadding="5" style="font-size: 12px" width="100%">'
+      html += '<table cellspacing="0" cellpadding="5" style="font-size: 12px; border-style: solid; border-width: 2px; border-color: #DDDDDD" width="100%">'
 
-      html += '<tr style="font-weight: bold">'
-      html += '<th style="text-align: left">Date</th>'
+      html += '<tr style="font-weight: bold; background-color: #DDDDDD">'
+      html += '<th style="text-align: left" width="75">Date</th>'
       html += '<th style="text-align: left">Destination</th>'
-      html += '<th style="text-align: right">Amount</th>'
-      html += '<th style="text-align: right">Total</th>' if use_total
+      html += '<th style="text-align: right" width="75">Amount</th>'
+      html += '<th style="text-align: right" width="75">Total</th>' if use_total
       html += '</tr>'
 
+      even = true
       entries[label].each do |e| 
+        even = !even
+
         delta = "%s%0.2f" % [ (e[:delta] >= 0 ? '+' : '-'), e[:delta].abs/100.0 ] 
         total = "%0.2f" % (e[:total].to_i/100.0)
 
-        html += '<tr style="font-weight: normal">'
+        row_style = { 
+          'font-weight' => 'normal',
+          'background-color' => even ? '#DDDDDD' : '#FFFFFF'
+        }.map {|k, v| "#{k}: #{v}"}.join('; ')
+
+        html += sprintf '<tr style="%s">', row_style
         html += '<td style="text-align: left">' + e[:date].strftime('%m/%d/%Y') + '</td>'
         html += '<td style="text-align: left">' + e[:destination] + '</td>'
         html += '<td style="text-align: right">' + delta + '</td>'
@@ -322,5 +330,4 @@ end
 if $0 == __FILE__
   cb = CommerceBank.new
   cb.gmail_daily_summary
-  cb.gmail_monthly_summary
 end
