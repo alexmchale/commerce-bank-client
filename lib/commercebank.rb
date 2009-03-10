@@ -174,14 +174,21 @@ class CommerceBank
     print(summarize(daily_summary))
   end
 
+  def text_daily_summary
+    summarize daily_summary
+  end
+
+  def html_daily_summary
+    summarize_html daily_summary
+  end
+
   def gmail_daily_summary
     subject = "Daily Summary"
-    summary = summarize_html(daily_summary)
 
     username = @config['GMail Username']
     password = @config['GMail Password']
 
-    GMail.new(username, password).send(username, subject, summary, 'text/html') 
+    GMail.new(username, password).send(username, subject, html_daily_summary, 'text/html') 
   end
 
   def gmail_monthly_summary
