@@ -10,9 +10,9 @@ require 'time'
 require 'date'
 require 'json'
 require 'htmlentities'
+require 'gmail'
 require 'commercebank/monkey.rb'
 require 'commercebank/appconfig.rb'
-require 'commercebank/gmail.rb'
 
 class Array
   def binary
