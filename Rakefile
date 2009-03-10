@@ -47,7 +47,7 @@ rescue LoadError
 end
 
 task :verify_committed do
-  abort "This project has not been fully committed." unless `git status | wc -l`.to_i == 2
+  abort "This project has not been fully committed." unless `git status | grep "nothing to commit"` != ''
 end
 
 task :patch => [ :verify_committed, :test, "version:bump:patch", :release ]
