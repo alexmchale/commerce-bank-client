@@ -117,119 +117,23 @@ class CommerceBank
       end
     end
 
-    { 'Pending' => @pending,
-      'Today' => today, 
-      'Yesterday' => yesterday, 
-      'This Week' => this_week, 
-      'Last Week' => last_week, 
-      :order => [ 'Pending', 'Today', 'Yesterday', 'This Week', 'Last Week' ] }
+    yield 'Pending', @pending
+    yield 'Today', today
+    yield 'Yesterday', yesterday
+    yield 'This Week', this_week
+    yield 'Last Week', last_week
   end
 
   def monthly_summary(day_in_month = (Date.today - Date.today.day))
     first_of_month = day_in_month - day_in_month.day + 1
     last_of_month = first_of_month + day_in_month.days_in_month - 1
+
     entries = register.find_all {|entry| entry[:date] >= first_of_month && entry[:date] <= last_of_month}
-    { day_in_month.strftime('%B') => entries }
-  end
 
-  def print_all
-    summarize 'All' => register
-  end
-
-  def print_daily_summary
-    print(summarize(daily_summary))
-  end
-
-  def text_daily_summary
-    summarize daily_summary
-  end
-
-  def html_daily_summary
-    summarize_html daily_summary
-  end
-
-  def gmail_daily_summary
-    subject = "Daily Summary"
-
-    username = @config['GMail Username']
-    password = @config['GMail Password']
-
-    GMail.new(username, password).send(username, subject, html_daily_summary, 'text/html') 
-  end
-
-  def gmail_monthly_summary
-    last_month = Date.today - Date.today.day
-    subject = "#{last_month.strftime('%B')} Summary"
-    summary = summarize_html(monthly_summary(last_month))
-
-    username = @config['GMail Username']
-    password = @config['GMail Password']
-
-    GMail.new(username, password).send(username, subject, summary, 'text/html') 
+    yield day_in_month.strftime('%B'), entries
   end
 
 private
-
-  def summarize(entries)
-    (entries[:order] || entries.keys).map do |label|
-      next if entries[label].length == 0
-
-      label.to_s + ":\n" + entries[label].map do |e|
-        [
-          e[:date].strftime('%02m/%02d/%04Y '),
-          "%-100s " % e[:destination],
-          "%10s " % e[:delta].to_dollars(:show_plus),
-          e[:total] && ("%10s " % e[:total].to_dollars),
-          "\n"
-        ].compact.join
-      end.join
-    end.compact.join("\n")
-  end
-
-  def summarize_html(entries)
-    html = ''
-
-    (entries[:order] || entries.keys).each do |label|
-      next if entries[label].length == 0
-
-      use_total = entries[label].find {|e| e[:total]}
-
-      html += '<h2 style="font-family: garamond, georgia, serif">' + label + '</h2>'
-
-      html += '<table cellspacing="0" cellpadding="5" style="font-size: 12px; border-style: solid; border-width: 2px; border-color: #DDDDDD" width="100%">'
-
-      html += '<tr style="font-weight: bold; background-color: #DDDDDD">'
-      html += '<th style="text-align: left" width="75">Date</th>'
-      html += '<th style="text-align: left">Destination</th>'
-      html += '<th style="text-align: right" width="75">Amount</th>'
-      html += '<th style="text-align: right" width="75">Total</th>' if use_total
-      html += '</tr>'
-
-      even = true
-      entries[label].each do |e| 
-        even = !even
-
-        delta = "%s%0.2f" % [ (e[:delta] >= 0 ? '+' : '-'), e[:delta].abs/100.0 ] 
-        total = "%0.2f" % (e[:total].to_i/100.0)
-
-        row_style = { 
-          'font-weight' => 'normal',
-          'background-color' => even ? '#DDDDDD' : '#FFFFFF'
-        }.map {|k, v| "#{k}: #{v}"}.join('; ')
-
-        html += sprintf '<tr style="%s">', row_style
-        html += '<td style="text-align: left">' + e[:date].strftime('%m/%d/%Y') + '</td>'
-        html += '<td style="text-align: left">' + e[:destination] + '</td>'
-        html += '<td style="text-align: right">' + delta + '</td>'
-        html += '<td style="text-align: right">' + total + '</td>' if use_total
-        html += '</tr>'
-      end
-
-      html += '</table>'
-    end
-
-    html
-  end
 
   def parse_balance(body)
     Hpricot.buffer_size = 262144
@@ -299,7 +203,3 @@ private
   end
 end
 
-if $0 == __FILE__
-  cb = CommerceBank.new
-  cb.gmail_daily_summary
-end
