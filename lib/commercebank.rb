@@ -11,8 +11,8 @@ require 'date'
 require 'json'
 require 'htmlentities'
 require 'gmail'
+require 'appconfig'
 require 'commercebank/monkey.rb'
-require 'commercebank/appconfig.rb'
 
 class WebClient
   attr_reader :fields, :cookies
