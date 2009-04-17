@@ -180,7 +180,7 @@ private
       debit = values[3].to_cents
       credit = values[4].to_cents
       delta = credit - debit
-      total = values[5].to_cents
+      total = values[5].scan(/\$[\d,]+\.\d\d/).first.to_cents
 
       images = (e/"a").find_all do |e1|
         e1['target'].to_s.downcase == 'checkimage'
