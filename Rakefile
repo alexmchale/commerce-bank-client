@@ -51,5 +51,6 @@ end
 task :patch => [ :verify_committed, :test, "version:bump:patch", :release, :build, :install ]
 task :minor => [ :verify_committed, :test, "version:bump:minor", :release, :build, :install ]
 task :major => [ :verify_committed, :test, "version:bump:major", :release, :build, :install ]
+task :local => [ :verify_committed, :test, :build, :install ]
 
 task :default => :test
