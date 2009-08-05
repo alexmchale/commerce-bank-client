@@ -78,20 +78,20 @@ class CommerceBank
 
     client.get('/CBI/login.aspx', 'MAINFORM')
 
-    client.fields['txtUserID'] = @config[:username]
+    client.fields['txtUserID'] = @config.get('username')
     response = client.post('/CBI/login.aspx', 'MAINFORM')
 
     # If a question was asked, answer it then get the password page.
     question = response.body.scan(/Your security question:&nbsp;&nbsp;(.*?)<\/td>/i).first.andand.first
     if question
-      client.fields['txtChallengeAnswer'] = @config[question]
+      client.fields['txtChallengeAnswer'] = @config.get(question)
       client.fields['saveComputer'] = 'rdoBindDeviceNo'
       response = client.post('/CBI/login.aspx', 'MAINFORM')
     end
 
     raise "could not reach the password page" unless client.fields['__EVENTTARGET'] == 'btnLogin'
 
-    client.fields['txtPassword'] = @config[:password]
+    client.fields['txtPassword'] = @config.get('password')
     response = client.post('/CBI/login.aspx')
 
     response = client.get('/CBI/Accounts/CBI/Activity.aspx', 'MAINFORM')
