@@ -48,6 +48,7 @@ private
     Hpricot.buffer_size = 262144
     doc = Hpricot.parse(body)
     form = (doc/"##{name}").first
+    raise "could not find form #{name}" unless form
     fields = Hash[*((form/"input").map {|e| [ e.attributes['name'], e.attributes['value'] ]}.flatten)]
     fields['TestJavaScript'] = 'OK'
     fields
