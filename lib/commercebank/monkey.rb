@@ -3,7 +3,6 @@ require 'pp'
 require 'andand'
 require 'cgi'
 require 'yaml'
-require 'RMagick'
 
 class Array
   def binary
@@ -61,38 +60,5 @@ end
 class String
   def commify
     reverse.gsub(/(\d\d\d)(?=\d)/, '\1,').reverse
-  end
-end
-
-module Magick
-  class Image
-    def autocrop(red = 65535, green = 65535, blue = 65535)
-      low_x = 0
-      low_y = 0
-      high_x = columns
-      high_y = rows
-
-      croppable = Proc.new do |x, y|
-        pixel = pixel_color(x, y)
-        (pixel.red == red) && (pixel.green == green) && (pixel.blue == blue)
-      end
-
-      # Scan the top horizontal.
-      low_y += 1 until (low_y == rows) || (low_x..high_x).find {|x| !croppable.call(x, low_y)}
-
-      # Scan the bottom horizontal.
-      high_y -= 1 until (low_y == high_y) || (low_x..high_x).find {|x| !croppable.call(x, high_y)}
-
-      # Scan the left vertical.
-      low_x += 1 until (low_x == columns) || (low_y..high_y).find {|y| !croppable.call(low_x, y)}
-
-      # Scan the right vertical.
-      high_x -= 1 until (low_x == high_x) || (low_y..high_y).find {|y| !croppable.call(high_x, y)}
-
-      width = high_x - low_x
-      height = high_y - low_y
-
-      crop low_x, low_y, width, height
-    end
   end
 end
