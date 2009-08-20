@@ -67,7 +67,7 @@ private
 end
 
 class CommerceBank
-  attr_reader :register, :current, :available
+  attr_reader :pending, :register, :current, :available
 
   def initialize
     @config = AppConfig.new('~/.commerce.yaml')
