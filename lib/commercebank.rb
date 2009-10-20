@@ -5,7 +5,6 @@ require 'hpricot'
 require 'andand'
 require 'cgi'
 require 'yaml'
-require 'ftools'
 require 'time'
 require 'date'
 require 'json'
@@ -13,6 +12,13 @@ require 'htmlentities'
 require 'gmail'
 require 'appconfig'
 require 'commercebank/monkey.rb'
+
+class Fixnum
+  def days;    24 * hours;   end
+  def hours;   60 * minutes; end
+  def minutes; 60 * seconds; end
+  def seconds; self;         end
+end
 
 class WebClient
   attr_reader :fields, :cookies
@@ -99,7 +105,7 @@ class CommerceBank
     @pending = parse_pending(response.body)
 
     client.fields['Anthem_UpdatePage'] = 'true'
-    client.fields['txtFilterFromDate:textBox'] = Time.parse('1/1/2000').strftime('%m/%d/%Y')
+    client.fields['txtFilterFromDate:textBox'] = (Time.now - 30.days).strftime('%m/%d/%Y')
     client.fields['txtFilterToDate:textBox'] = Time.now.strftime('%m/%d/%Y')
     response = client.post('/CBI/Accounts/CBI/Activity.aspx?Anthem_CallBack=true')
 
@@ -159,7 +165,7 @@ private
       credit = values[3].to_cents
       delta = credit - debit
 
-      { :date => Date.parse(values[0]),
+      { :date => parse_date(values[0]),
         :destination => values[1],
         :delta => delta,
         :debit => debit,
@@ -176,7 +182,7 @@ private
 
       anchor = e.at("a")
       values = (e/"td").map {|e1| e1.inner_html}
-      date = Date.parse(values[0])
+      date = parse_date(values[0])
       check = values[1].strip
       debit = values[3].to_cents
       credit = values[4].to_cents
@@ -201,6 +207,18 @@ private
         :total => total
       }
     end.compact
+  end
+
+  def parse_date(date_string)
+    (month, day, year) = date_string.scan(/(\d+)\/(\d+)\/(\d+)/).first
+    return nil unless month && day && year
+
+    month = month.to_i
+    day = day.to_i
+    year = year.to_i
+    year += 2000 if year < 100
+
+    Date.parse("%04d-%02d-%02d" % [ year, month, day ])
   end
 end
 
