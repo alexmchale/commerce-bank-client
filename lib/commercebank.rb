@@ -111,6 +111,14 @@ class CommerceBank
 
     raw_data = JSON.parse(response.body)
     @register = parse_register(raw_data['controls']['pnlPosted'])
+
+    @register.each do |entry|
+      entry[:images].map! do |image_url|
+        url = "https://banking.commercebank.com/CBI/Accounts/CBI/#{image_url[:url]}"
+        client.get(url).andand.body
+      end
+      entry[:images].compact!
+    end
   end
 
   def daily_summary
