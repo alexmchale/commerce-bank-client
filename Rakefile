@@ -2,7 +2,7 @@ require 'rubygems'
 require 'rake'
 require 'echoe'
 
-Echoe.new("commerce-bank-client", "1.1.0") do |p|
+Echoe.new("commerce-bank-client", "1.1.1") do |p|
 
   p.description              = "An interface to the Commerce Bank website (https://banking.commercebank.com)."
   p.url                      = "http://github.com/alexmchale/commerce-bank-client"
@@ -12,5 +12,6 @@ Echoe.new("commerce-bank-client", "1.1.0") do |p|
   p.runtime_dependencies     = []
   p.development_dependencies = []
   p.require_signed           = true
+  p.use_sudo                 = false
 
 end

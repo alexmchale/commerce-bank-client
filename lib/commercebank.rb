@@ -9,7 +9,6 @@ require 'time'
 require 'date'
 require 'json'
 require 'htmlentities'
-require 'gmail'
 require 'appconfig'
 require 'commercebank/monkey.rb'
 
