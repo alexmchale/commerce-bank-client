@@ -1,56 +1,16 @@
 require 'rubygems'
 require 'rake'
+require 'echoe'
 
-begin
-  require 'jeweler'
-  Jeweler::Tasks.new do |gem|
-    gem.name = "commerce-bank-client"
-    gem.summary = %Q{CBC is a client for Commerce Bank's website.}
-    gem.email = "alexmchale@gmail.com"
-    gem.homepage = "http://github.com/alexmchale/commerce-bank-client"
-    gem.authors = ["Alex McHale"]
-    # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
-  end
-rescue LoadError
-  puts "Jeweler not available. Install it with: sudo gem install technicalpickles-jeweler -s http://gems.github.com"
+Echoe.new("commerce-bank-client", "1.0.0") do |p|
+
+  p.description              = "An interface to the Commerce Bank website (https://banking.commercebank.com)."
+  p.url                      = "http://github.com/alexmchale/commerce-bank-client"
+  p.author                   = "Alex McHale"
+  p.email                    = "alexmchale@gmail.com"
+  p.ignore_pattern           = %w( tmp/* script/* )
+  p.runtime_dependencies     = []
+  p.development_dependencies = []
+  p.require_signed           = true
+
 end
-
-require 'rake/rdoctask'
-Rake::RDocTask.new do |rdoc|
-  rdoc.rdoc_dir = 'rdoc'
-  rdoc.title = 'commerce-bank-client'
-  rdoc.options << '--line-numbers' << '--inline-source'
-  rdoc.rdoc_files.include('README*')
-  rdoc.rdoc_files.include('lib/**/*.rb')
-end
-
-require 'rake/testtask'
-Rake::TestTask.new(:test) do |test|
-  test.libs << 'lib' << 'test'
-  test.pattern = 'test/**/*_test.rb'
-  test.verbose = false
-end
-
-begin
-  require 'rcov/rcovtask'
-  Rcov::RcovTask.new do |test|
-    test.libs << 'test'
-    test.pattern = 'test/**/*_test.rb'
-    test.verbose = true
-  end
-rescue LoadError
-  task :rcov do
-    abort "RCov is not available. In order to run rcov, you must: sudo gem install spicycode-rcov"
-  end
-end
-
-task :verify_committed do
-  abort "This project has not been fully committed." unless `git status | grep "nothing to commit"` != ''
-end
-
-task :patch => [ :verify_committed, :test, "version:bump:patch", :release, :build, :install ]
-task :minor => [ :verify_committed, :test, "version:bump:minor", :release, :build, :install ]
-task :major => [ :verify_committed, :test, "version:bump:major", :release, :build, :install ]
-task :local => [ :verify_committed, :test, :build, :install ]
-
-task :default => :test
