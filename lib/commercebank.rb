@@ -9,8 +9,8 @@ require 'time'
 require 'date'
 require 'json'
 require 'htmlentities'
-require 'appconfig'
-require 'commercebank/monkey.rb'
+require 'commercebank/monkey'
+require 'commercebank/appconfig'
 
 class Fixnum
   def days;    24 * hours;   end

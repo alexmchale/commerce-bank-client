@@ -4,6 +4,7 @@ README.markdown
 Rakefile
 lib/commerce-bank-client.rb
 lib/commercebank.rb
+lib/commercebank/appconfig.rb
 lib/commercebank/monkey.rb
 test/commerce_bank_client_test.rb
 test/monkeypatch_test.rb
